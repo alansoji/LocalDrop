@@ -26,10 +26,9 @@ LocalDrop-Setup.exe
 # Assets — keep sources, ignore generated
 assets/*.ico
 assets/*.png
-# (uncomment if you commit icons)
-# !assets/icon.ico
-# !assets/icon.png
-# !assets/icon.svg
+!assets/icon.ico
+!assets/icon.png
+!assets/icon.svg
 
 # Virtual environments
 .venv/
