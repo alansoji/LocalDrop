@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# PyInstaller
+*.spec.bak
+dist/
+build/
+
+# AppImage build artefacts
+AppDir/
+appimage-builder-cache/
+*.AppImage
+!linux/*.AppImage   # keep any committed appimages
+
+# Windows build outputs
+LocalDrop-Setup.exe
+
+# Assets — keep sources, ignore generated
+assets/*.ico
+assets/*.png
+# (uncomment if you commit icons)
+# !assets/icon.ico
+# !assets/icon.png
+# !assets/icon.svg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

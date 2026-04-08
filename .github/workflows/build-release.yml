@@ -1,0 +1,165 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"           # triggers on: git tag v1.0.0 && git push origin v1.0.0
+  workflow_dispatch:   # also allows manual trigger from GitHub UI
+
+permissions:
+  contents: write      # needed to upload release assets
+
+jobs:
+
+  # ──────────────────────────────────────────────
+  #  Windows — PyInstaller + NSIS installer
+  # ──────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: "x64"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller pyqt6 "qrcode[pil]" Pillow
+
+      - name: Generate placeholder icon (if not present)
+        run: |
+          python -c "
+          import os, struct, zlib
+          # Minimal valid 1x1 ICO file (purple pixel) as fallback
+          os.makedirs('assets', exist_ok=True)
+          if not os.path.exists('assets/icon.ico'):
+              # 16x16 purple ICO — placeholder
+              from PIL import Image, ImageDraw
+              img = Image.new('RGBA', (256, 256), (124, 109, 250, 255))
+              d = ImageDraw.Draw(img)
+              d.ellipse([32,32,224,224], fill=(255,255,255,40))
+              img.save('assets/icon.ico', format='ICO', sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])
+              print('Generated placeholder icon')
+          "
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pyinstaller windows/localdrop.spec
+
+      - name: Install NSIS
+        run: choco install nsis --no-progress -y
+
+      - name: Build installer with NSIS
+        run: makensis windows/installer.nsi
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: LocalDrop-Setup.exe
+
+  # ──────────────────────────────────────────────
+  #  Linux — AppImage
+  # ──────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            python3-pyqt5 python3-pil \
+            libfuse2 fuse \
+            desktop-file-utils \
+            libglib2.0-bin
+
+      - name: Install Python dependencies
+        run: pip install "qrcode[pil]" appimage-builder
+
+      - name: Generate placeholder icon (if not present)
+        run: |
+          python3 -c "
+          import os
+          os.makedirs('assets', exist_ok=True)
+          if not os.path.exists('assets/icon.png'):
+              from PIL import Image, ImageDraw
+              img = Image.new('RGBA', (256, 256), (124, 109, 250, 255))
+              d = ImageDraw.Draw(img)
+              d.ellipse([32,32,224,224], fill=(255,255,255,40))
+              img.save('assets/icon.png')
+              print('Generated placeholder icon')
+          "
+
+      - name: Populate AppDir
+        run: make appdir
+
+      - name: Build AppImage
+        run: |
+          cd linux
+          appimage-builder --recipe AppImageBuilder.yml --skip-test
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: linux/LocalDrop-*.AppImage
+
+  # ──────────────────────────────────────────────
+  #  Release — attach both artifacts
+  # ──────────────────────────────────────────────
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: ./release
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: ./release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/LocalDrop-Setup.exe
+            release/LocalDrop-*.AppImage
+          body: |
+            ## LocalDrop ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | 🪟 Windows | `LocalDrop-Setup.exe` — installer with Start Menu & firewall rule |
+            | 🐧 Linux   | `LocalDrop-x86_64.AppImage` — portable, no install needed |
+
+            ### Quick Start
+            **Windows:** Run the installer, then launch from Start Menu.
+
+            **Linux:**
+            ```bash
+            chmod +x LocalDrop-*.AppImage
+            ./LocalDrop-*.AppImage
+            ```
+            Or install properly:
+            ```bash
+            sudo make install
+            ```

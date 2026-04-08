@@ -1,0 +1,79 @@
+# appimage-builder recipe for LocalDrop
+# Docs: https://appimage-builder.readthedocs.io
+#
+# Requirements:
+#   pip install appimage-builder
+#   The app must be installed into AppDir first (make appdir does this)
+#
+# Usage:
+#   make appimage     <- runs everything in the right order
+
+version: 1
+
+AppDir:
+  path: ./AppDir
+
+  app_info:
+    id: io.github.localdrop
+    name: LocalDrop
+    icon: localdrop
+    version: "1.0.0"
+    exec: usr/bin/python3
+    exec_args: "$APPDIR/usr/share/localdrop/localdrop.py $@"
+
+  apt:
+    arch: amd64
+    sources:
+      - sourceline: "deb http://archive.ubuntu.com/ubuntu focal main restricted universe"
+        key_url: "http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3b4fe6acc0b21f32"
+      - sourceline: "deb http://archive.ubuntu.com/ubuntu focal-updates main restricted universe"
+    include:
+      - python3
+      - python3-pyqt5
+      - python3-pil
+      - libqt5widgets5
+      - libqt5gui5
+      - libqt5core5a
+      - libglib2.0-0
+      - libdbus-1-3
+      - libxcb-icccm4
+      - libxcb-image0
+      - libxcb-keysyms1
+      - libxcb-render-util0
+      - libxcb-xinerama0
+      - libxkbcommon-x11-0
+    exclude:
+      - perl
+      - perl-base
+
+  pip:
+    packages:
+      - qrcode[pil]
+    # PyQt6 via pip if system PyQt5 not present; kept optional
+    # - PyQt6
+
+  files:
+    include:
+      - usr/share/localdrop/localdrop.py
+      - usr/share/icons/hicolor/256x256/apps/localdrop.png
+      - usr/share/applications/localdrop.desktop
+    exclude:
+      - usr/share/man
+      - usr/share/doc/*/README.*
+      - usr/share/doc/*/changelog.*
+      - usr/share/doc/*/NEWS.*
+
+  runtime:
+    env:
+      QT_AUTO_SCREEN_SCALE_FACTOR: "1"
+      PYTHONPATH: "$APPDIR/usr/lib/python3/dist-packages"
+
+AppImage:
+  arch: x86_64
+  file_name: "LocalDrop-1.0.0-x86_64.AppImage"
+  update-information: "gh-releases-zsync|YOUR_USERNAME|localdrop|latest|LocalDrop-*-x86_64.AppImage.zsync"
+  sign-key: None
+  apt:
+    arch: amd64
+    sources:
+      - sourceline: "deb http://archive.ubuntu.com/ubuntu focal main"

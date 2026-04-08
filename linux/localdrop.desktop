@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=LocalDrop
+GenericName=Wireless File Bridge
+Comment=Multi-device wireless file & clipboard bridge
+Exec=localdrop
+Icon=localdrop
+Terminal=false
+Categories=Network;FileTransfer;Utility;
+Keywords=file;transfer;wireless;clipboard;lan;local;
+StartupWMClass=localdrop
+StartupNotify=true
