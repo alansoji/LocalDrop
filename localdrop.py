@@ -648,13 +648,18 @@ class ServerThread(QThread):
         except Exception as e:
             self.error_signal.emit(f"Server crashed: {e}\n{traceback.format_exc()}")
 
+# FIXED
     def stop(self):
-        """Shutdown in a daemon thread — never blocks the GUI."""
         if self.server:
             srv = self.server
-            self.server = None
-            threading.Thread(target=srv.shutdown, daemon=True).start()
-
+            self.server = None  # guard against double-stop
+            def _do_shutdown():
+                try:
+                    srv.shutdown()
+                except Exception:
+                    pass
+            threading.Thread(target=_do_shutdown, daemon=True).start()
+    
 
 # ── Main Window ──────────────────────────────────────────────────
 class LocalDropWindow(QMainWindow):
@@ -861,10 +866,36 @@ class LocalDropWindow(QMainWindow):
             background:rgba(124,109,250,0.12); border:1px solid rgba(124,109,250,0.3);
             border-radius:99px; color:#7c6dfa; font-size:12px; font-weight:600; padding:5px 14px;
         """)
+        if self.server_thread:
+            self.server_thread.stop()
+        self._poll_restart()
+        
+    def _poll_restart(self):
+        if self.server_thread and self.server_thread.isRunning():
+            QTimer.singleShot(200, self._poll_restart)
+            return
+        new_ip, ip_warn = get_local_ip()
+        try:
+            new_port = find_free_port(PREFERRED_PORT)
+        except OSError:
+            new_port = self.port
+        self.ip = new_ip
+        self.port = new_port
+        self.url = f"http://{new_ip}:{new_port}"
+        self.url_label.setText(self.url)
+        px = make_qr_pixmap(self.url, 190)
+        if px:
+            self.qr_label.setPixmap(px)
+        else:
+            self.qr_label.setText("QR unavailable — install qrcode[pil]")
+        if ip_warn:
+            self.append_log(ip_warn)
+        self.append_log(f"New IP detected: {self.url}")
         self.stop_btn.setText("Stop")
         self.stop_btn.setObjectName("stopBtn")
         self.stop_btn.setStyleSheet("")
         self.open_btn.setEnabled(True)
+        self.server_thread = None
         self.start_server()
 
     def append_log(self, msg):
