@@ -1,20 +1,19 @@
 # =============================================================================
 #  LocalDrop  —  Makefile
-#  Supports: Linux (make install, make appimage) and Windows build instructions
 # =============================================================================
 
-APP       := localdrop
-VERSION   := 1.0.0
-PYTHON    := python3
-PIP       := pip3
+APP        := localdrop
+VERSION    := 1.0.0
+PYTHON     := python3
+PIP        := pip3
 
-IS_EXT_MANAGED := $(shell $(PYTHON) -c "import importlib.metadata as m; print(any('EXTERNALLY-MANAGED' in f for f in m.files('pip'))) " 2>/dev/null)
+IS_EXT := $(shell $(PYTHON) -c "import os; print(os.path.exists('/usr/lib/python3.12/EXTERNALLY-MANAGED') or os.path.exists('/usr/lib/python3/EXTERNALLY-MANAGED'))" 2>/dev/null)
 
-ifeq ($(IS_EXT_MANAGED),True)
+ifeq ($(IS_EXT),True)
     PIP_FLAGS += --break-system-packages
 endif
-PIP_FLAGS += --ignore-installed
 
+PIP_FLAGS += --ignore-installed
 # Install paths (Linux)
 PREFIX       ?= /usr/local
 BINDIR       := $(PREFIX)/bin
