@@ -8,6 +8,13 @@ VERSION   := 1.0.0
 PYTHON    := python3
 PIP       := pip3
 
+IS_EXT_MANAGED := $(shell $(PYTHON) -c "import importlib.metadata as m; print(any('EXTERNALLY-MANAGED' in f for f in m.files('pip'))) " 2>/dev/null)
+
+ifeq ($(IS_EXT_MANAGED),True)
+    PIP_FLAGS += --break-system-packages
+endif
+PIP_FLAGS += --ignore-installed
+
 # Install paths (Linux)
 PREFIX       ?= /usr/local
 BINDIR       := $(PREFIX)/bin
@@ -46,11 +53,11 @@ help:
 # ─────────────────────────────────────────────
 .PHONY: deps
 deps:
-	@echo "→ Installing Python dependencies…"
-	$(PIP) install --upgrade pyqt6 "qrcode[pil]" Pillow || \
-	$(PIP) install --upgrade pyqt5 "qrcode[pil]" Pillow
-	@echo "✓ Dependencies installed"
-
+	@echo "→ Checking/Installing Python dependencies…"
+	@# Try PyQt6 first, fallback to PyQt5 if needed
+	$(PIP) install $(PIP_FLAGS) --upgrade pyqt6 "qrcode[pil]" Pillow || \
+	$(PIP) install $(PIP_FLAGS) --upgrade pyqt5 "qrcode[pil]" Pillow
+	@echo "✓ Dependencies satisfied"
 # ─────────────────────────────────────────────
 #  Run from source (no install)
 # ─────────────────────────────────────────────
